@@ -1,0 +1,42 @@
+name: Unity Demo CI
+
+on:
+  [push, pull_request]
+
+jobs:
+  build:
+    name: Build using Unity 🦄
+    runs-on: windows-latest
+      
+    steps:
+      # See https://github.com/marketplace/actions/unity-builder
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Install Unity
+        run: |
+          Install-Module UnitySetup -Force
+          Import-Module UnitySetup
+          Find-UnitySetupInstaller -Version $env:UNITY_VERSION -Components 'Windows','UWP' | Install-UnitySetupInstance -Verbose
+        shell: pwsh
+        env:
+          UNITY_VERSION: 2018.4.17f1
+          
+      - name: Activate Unity
+        run: |
+          echo "Using ${{ secrets.UNITY_EMAIL }}"
+          "C:\Program Files\Unity\Editor\Unity.exe" -batchmode -nographics -username ${{ secrets.UNITY_EMAIL }} -password ${{ secrets.UNITY_PASSWORD }} -serial ${{ secrets.UNITY_SERIAL }} -quit
+        shell: cmd
+        continue-on-error: true
+
+      - name: Build Unity Project
+        run: |
+          "C:\Program Files\Unity\Editor\Unity.exe" -batchmode -nographics -projectPath ".\Unity-Demo\" -executeMethod Microsoft.MixedReality.Toolkit.Build.Editor.UnityPlayerBuildTools.StartCommandLineBuild -quit
+        shell: cmd
+
+      - name: Release License for Unity
+        run: |
+          echo "Using ${{ secrets.UNITY_EMAIL }}"
+          "C:\Program Files\Unity\Editor\Unity.exe" -batchmode -quit -returnlicense
+        shell: cmd
+        if: always()
